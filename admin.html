@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Festival Atlas: Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Newsreader:ital,wght@0,300;0,400;0,500&display=swap">
+<style>
+  :root{
+    --cream:#F3EDE2; --paper:#FAF6EE; --ink:#1E1A16; --ink-2:#544B41; --ink-3:#8C8175;
+    --rule:rgba(30,26,22,.16); --saffron:#C4531F; --red:#8A2B2B; --green:#3F6141;
+    --serif:"Newsreader",Georgia,serif; --sans:"Archivo","Helvetica Neue",Helvetica,sans-serif;
+    --mono:"IBM Plex Mono",ui-monospace,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;min-height:100%;background:var(--cream);color:var(--ink);
+    font-family:var(--sans);-webkit-font-smoothing:antialiased}
+  a{color:var(--saffron)}
+  h1,h2,h3{font-family:var(--serif);font-weight:400;margin:0}
+  .mono{font-family:var(--mono);letter-spacing:.06em}
+  #app{max-width:1100px;margin:0 auto;padding:36px 24px 100px}
+  header.top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:28px;
+    border-bottom:1px solid var(--rule);padding-bottom:18px;flex-wrap:wrap;gap:10px}
+  header.top h1{font-size:26px}
+  header.top .sub{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--ink-2)}
+  .card{background:var(--paper);border:1px solid var(--rule);border-radius:14px;padding:26px;
+    margin-bottom:22px}
+  .field{margin-bottom:16px}
+  .field label{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--ink-2);margin-bottom:6px}
+  .field .hint{font-size:12px;color:var(--ink-3);margin-top:5px;line-height:1.5}
+  input, select, textarea{width:100%;font-family:var(--sans);font-size:14px;padding:9px 11px;
+    border:1px solid var(--rule);border-radius:8px;background:#fff;color:var(--ink)}
+  textarea{min-height:64px;resize:vertical;line-height:1.5}
+  input:focus, select:focus, textarea:focus{outline:2px solid var(--saffron);outline-offset:1px}
+  .row{display:flex;gap:14px;flex-wrap:wrap}
+  .row > .field{flex:1;min-width:180px}
+  button{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+    padding:10px 18px;border-radius:8px;border:1px solid var(--ink);background:var(--ink);
+    color:var(--cream);cursor:pointer}
+  button.ghost{background:none;color:var(--ink);border:1px solid var(--rule)}
+  button.danger{background:var(--red);border-color:var(--red)}
+  button:disabled{opacity:.4;cursor:default}
+  button:hover:not(:disabled){filter:brightness(1.08)}
+  .warn{background:#F0E7D6;border-left:3px solid var(--saffron);padding:14px 16px;font-size:13px;
+    line-height:1.6;border-radius:0 8px 8px 0;margin-bottom:20px}
+  #status{position:fixed;bottom:20px;right:20px;max-width:360px;font-family:var(--mono);font-size:12px;
+    padding:12px 16px;border-radius:8px;box-shadow:0 8px 30px rgba(30,26,22,.18);z-index:99;
+    display:none;line-height:1.5}
+  #status.ok{background:#e4efe4;border:1px solid var(--green);color:var(--green);display:block}
+  #status.err{background:#f6e2e0;border:1px solid var(--red);color:var(--red);display:block}
+  #status.busy{background:var(--paper);border:1px solid var(--rule);color:var(--ink-2);display:block}
+  .statelist{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px}
+  .statelist button{background:#fff;color:var(--ink);border:1px solid var(--rule);font-size:10px}
+  .statelist button.active{background:var(--ink);color:var(--cream)}
+  .flist{border-top:1px solid var(--rule)}
+  .frow{display:flex;justify-content:space-between;align-items:center;padding:12px 0;
+    border-bottom:1px solid var(--rule);gap:10px}
+  .frow .fname{font-family:var(--serif);font-size:17px}
+  .frow .fmeta{font-family:var(--mono);font-size:9.5px;color:var(--ink-2);letter-spacing:.08em;
+    text-transform:uppercase}
+  .frow .fbtns{display:flex;gap:8px;flex:none}
+  .frow .fbtns button{padding:6px 12px;font-size:9.5px}
+  [hidden]{display:none!important}
+  .thumb{width:100%;max-width:220px;aspect-ratio:4/3;object-fit:cover;border-radius:8px;
+    border:1px solid var(--rule);margin-top:8px;background:#fff}
+  .sectiontitle{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--saffron);margin:26px 0 12px}
+  .toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="top">
+    <div>
+      <a href="index.html" class="mono" style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+        display:inline-block;margin-bottom:10px;color:var(--ink-2);text-decoration:none;
+        border-bottom:1px solid var(--rule)">&larr; Back to the atlas</a>
+      <h1>Festival Atlas <span class="mono" style="font-size:14px;color:var(--ink-2)">/ admin</span></h1>
+      <div class="sub">Add and edit festivals directly in the repository</div>
+    </div>
+    <div id="whoami" class="mono" style="font-size:11px;color:var(--ink-2)"></div>
+  </header>
+
+  <section id="login-view">
+    <div class="warn">
+      This page commits straight to your GitHub repository using a personal access token you paste
+      below. The token is stored only in this browser's local storage and is never sent anywhere
+      except api.github.com. Use a <strong>fine-grained token</strong> scoped to just this one
+      repository with read and write access to Contents, and only sign in here on a device you trust.
+      Anyone with this token can edit the repository, so treat it like a password.
+    </div>
+    <div class="card">
+      <div class="row">
+        <div class="field">
+          <label>Repository owner</label>
+          <input id="in-owner" placeholder="your-github-username">
+        </div>
+        <div class="field">
+          <label>Repository name</label>
+          <input id="in-repo" placeholder="indian-festivals">
+        </div>
+        <div class="field">
+          <label>Branch</label>
+          <input id="in-branch" placeholder="main" value="main">
+        </div>
+      </div>
+      <div class="field">
+        <label>Personal access token</label>
+        <input id="in-token" type="password" placeholder="github_pat_...">
+        <div class="hint">
+          Create one at
+          <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">github.com/settings/personal-access-tokens/new</a>.
+          Choose "Only select repositories" and pick this repo. Under Permissions, set
+          <strong>Contents</strong> to Read and write. Nothing else is needed.
+        </div>
+      </div>
+      <button id="btn-connect">Connect</button>
+    </div>
+  </section>
+
+  <section id="editor-view" hidden>
+    <div class="toolbar">
+      <div class="statelist" id="statelist"></div>
+      <div style="display:flex;gap:10px">
+        <button class="ghost" id="btn-add-state">+ New state</button>
+        <button class="ghost" id="btn-logout">Log out</button>
+      </div>
+    </div>
+
+    <div class="card" id="state-card" hidden>
+      <div class="toolbar">
+        <h2 id="state-heading"></h2>
+        <button class="ghost" id="btn-edit-state">Edit state details</button>
+      </div>
+      <div class="flist" id="flist"></div>
+      <div style="margin-top:16px">
+        <button id="btn-add-festival">+ Add festival</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- state metadata form -->
+  <section id="state-form-view" hidden>
+    <div class="card">
+      <h2 id="state-form-title">State details</h2>
+      <div class="row">
+        <div class="field">
+          <label>Internal id (lowercase, no spaces)</label>
+          <input id="sf-id">
+        </div>
+        <div class="field">
+          <label>Display name</label>
+          <input id="sf-name">
+        </div>
+      </div>
+      <div class="field">
+        <label>Map name (st_nm, must match the map exactly)</label>
+        <input id="sf-stnm" list="stnm-options">
+        <datalist id="stnm-options"></datalist>
+        <div class="hint">This has to match one of the 36 official state and union territory names used by the map, or the state will not be clickable. Pick one from the list.</div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Capital</label>
+          <input id="sf-capital">
+        </div>
+        <div class="field">
+          <label>Languages (add native script in parentheses, e.g. Telugu (తెలుగు))</label>
+          <input id="sf-languages">
+        </div>
+      </div>
+      <div class="field">
+        <label>Tagline (1 to 3 plain sentences)</label>
+        <textarea id="sf-tagline"></textarea>
+      </div>
+      <div class="row">
+        <button id="btn-save-state">Save state</button>
+        <button class="ghost" id="btn-cancel-state">Cancel</button>
+        <button class="danger" id="btn-delete-state" style="margin-left:auto">Delete this state</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- festival form -->
+  <section id="festival-form-view" hidden>
+    <div class="card">
+      <h2 id="festival-form-title">Festival</h2>
+
+      <div class="sectiontitle">The basics</div>
+      <div class="row">
+        <div class="field"><label>Name</label><input id="ff-name"></div>
+        <div class="field"><label>Also known as (aliases)</label><input id="ff-aliases"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Month</label><input id="ff-month" placeholder="September to October"></div>
+        <div class="field"><label>Season / lunar detail</label><input id="ff-season"></div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Scale</label>
+          <select id="ff-scale">
+            <option value="3">Major, celebrated very widely</option>
+            <option value="2">Widespread</option>
+            <option value="1">Local</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Band</label>
+          <select id="ff-band">
+            <option value="hindu">Hindu and temple</option>
+            <option value="muslim">Islamic</option>
+            <option value="christian">Christian</option>
+            <option value="harvest">Harvest and seasonal</option>
+            <option value="community">Community and cultural</option>
+          </select>
+        </div>
+        <div class="field"><label>Categories (comma separated)</label><input id="ff-categories" placeholder="Hindu, Temple"></div>
+      </div>
+      <div class="field"><label>Reach (how widely it is kept)</label><input id="ff-reach"></div>
+
+      <div class="sectiontitle">The photo</div>
+      <div class="row">
+        <div class="field">
+          <label>Image URL (a link to a photo hosted elsewhere, optional)</label>
+          <input id="ff-imageurl" placeholder="https://...">
+          <img id="ff-thumb" class="thumb" hidden>
+        </div>
+        <div class="field">
+          <label>Image caption</label>
+          <input id="ff-image" placeholder="Short scene description, used as a caption or a placeholder">
+        </div>
+      </div>
+
+      <div class="sectiontitle">The story, written in full plain sentences a 10 year old could follow</div>
+      <div class="field"><label>What is it?</label><textarea id="ff-what"></textarea></div>
+      <div class="field"><label>Who celebrates it?</label><textarea id="ff-who"></textarea></div>
+      <div class="field"><label>When is it celebrated?</label><textarea id="ff-when"></textarea></div>
+      <div class="field"><label>Where did it begin?</label><textarea id="ff-origin"></textarea></div>
+      <div class="field"><label>What does it signify?</label><textarea id="ff-signifies"></textarea></div>
+      <div class="field"><label>What do people believe?</label><textarea id="ff-beliefs"></textarea></div>
+      <div class="field"><label>How is it celebrated?</label><textarea id="ff-celebrate"></textarea></div>
+      <div class="field"><label>A local detail</label><textarea id="ff-local"></textarea></div>
+
+      <div class="row">
+        <button id="btn-save-festival">Save festival</button>
+        <button class="ghost" id="btn-cancel-festival">Cancel</button>
+        <button class="danger" id="btn-delete-festival" style="margin-left:auto" hidden>Delete this festival</button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div id="status"></div>
+
+<script>
+const GH_API = "https://api.github.com";
+const DATA_PATH = "js/data.json";
+const STNM_LIST = ["Andaman and Nicobar Islands","Andhra Pradesh","Arunachal Pradesh","Assam","Bihar",
+  "Chandigarh","Chhattisgarh","Dadra and Nagar Haveli and Daman and Diu","Delhi","Goa","Gujarat",
+  "Haryana","Himachal Pradesh","Jammu and Kashmir","Jharkhand","Karnataka","Kerala","Ladakh",
+  "Lakshadweep","Madhya Pradesh","Maharashtra","Manipur","Meghalaya","Mizoram","Nagaland","Odisha",
+  "Puducherry","Punjab","Rajasthan","Sikkim","Tamil Nadu","Telangana","Tripura","Uttar Pradesh",
+  "Uttarakhand","West Bengal"];
+
+const LS_KEY = "atlasAdmin.v1";
+let session = null;   // {owner, repo, branch, token}
+let states = [];      // working copy of the data
+let sha = null;       // current blob sha of js/data.json, needed to commit
+let activeStateId = null;
+let editingFestivalIndex = null; // null = new
+
+const $ = id => document.getElementById(id);
+
+function showStatus(kind, msg){
+  const el = $("status");
+  el.className = kind;
+  el.textContent = msg;
+  if (kind === "ok") setTimeout(() => { if (el.textContent === msg) el.className = ""; }, 4000);
+}
+
+function ghHeaders(){
+  return {
+    "Authorization": "Bearer " + session.token,
+    "Accept": "application/vnd.github+json"
+  };
+}
+
+function guessRepo(){
+  const host = location.hostname;
+  const owner = host.endsWith(".github.io") ? host.replace(".github.io","") : "";
+  const parts = location.pathname.split("/").filter(Boolean);
+  // a project page (username.github.io/reponame/...) puts the repo name first in the path;
+  // a user/org root page (username.github.io/...) IS the repo named username.github.io
+  const repo = parts.length > 1 ? parts[0] : (owner ? owner + ".github.io" : "");
+  return {owner, repo};
+}
+
+function loadSession(){
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch(e){}
+  return null;
+}
+function saveSession(s){ localStorage.setItem(LS_KEY, JSON.stringify(s)); }
+function clearSession(){ localStorage.removeItem(LS_KEY); }
+
+/* ---------------- connect ---------------- */
+(function initLoginDefaults(){
+  const g = guessRepo();
+  if (g.owner) $("in-owner").value = g.owner;
+  if (g.repo) $("in-repo").value = g.repo;
+  STNM_LIST.forEach(n => {
+    const o = document.createElement("option"); o.value = n; $("stnm-options").appendChild(o);
+  });
+  const existing = loadSession();
+  if (existing) {
+    $("in-owner").value = existing.owner;
+    $("in-repo").value = existing.repo;
+    $("in-branch").value = existing.branch;
+    $("in-token").value = existing.token;
+    connect(existing, true);
+  }
+})();
+
+$("btn-connect").addEventListener("click", () => {
+  const s = {
+    owner: $("in-owner").value.trim(),
+    repo: $("in-repo").value.trim(),
+    branch: $("in-branch").value.trim() || "main",
+    token: $("in-token").value.trim()
+  };
+  if (!s.owner || !s.repo || !s.token) { showStatus("err", "Fill in owner, repo and token."); return; }
+  connect(s, false);
+});
+
+async function connect(s, silent){
+  session = s;
+  showStatus("busy", "Connecting to " + s.owner + "/" + s.repo + " ...");
+  try {
+    const repoRes = await fetch(`${GH_API}/repos/${s.owner}/${s.repo}`, {headers: ghHeaders()});
+    if (!repoRes.ok) throw new Error("Could not reach that repository (" + repoRes.status + "). Check owner, repo name and token permissions.");
+    const repoInfo = await repoRes.json();
+
+    const fileRes = await fetch(`${GH_API}/repos/${s.owner}/${s.repo}/contents/${DATA_PATH}?ref=${s.branch}`, {headers: ghHeaders()});
+    if (!fileRes.ok) throw new Error(`Could not read ${DATA_PATH} on branch ${s.branch} (${fileRes.status}).`);
+    const fileInfo = await fileRes.json();
+    sha = fileInfo.sha;
+    const json = decodeURIComponent(escape(atob(fileInfo.content.replace(/\n/g,""))));
+    states = JSON.parse(json);
+
+    saveSession(s);
+    $("whoami").textContent = s.owner + "/" + s.repo + " @ " + s.branch;
+    $("login-view").hidden = true;
+    $("editor-view").hidden = false;
+    renderStateList();
+    showStatus("ok", "Connected. Loaded " + states.length + " states.");
+  } catch(e){
+    clearSession();
+    showStatus("err", e.message);
+    if (!silent) console.error(e);
+  }
+}
+
+$("btn-logout").addEventListener("click", () => {
+  clearSession();
+  session = null; states = []; sha = null; activeStateId = null;
+  $("editor-view").hidden = true;
+  $("state-card").hidden = true;
+  $("login-view").hidden = false;
+  $("in-token").value = "";
+});
+
+/* ---------------- commit helper ---------------- */
+async function commit(message){
+  const body = {
+    message,
+    content: btoa(unescape(encodeURIComponent(JSON.stringify(states, null, 2) + "\n"))),
+    sha,
+    branch: session.branch
+  };
+  const res = await fetch(`${GH_API}/repos/${session.owner}/${session.repo}/contents/${DATA_PATH}`, {
+    method: "PUT",
+    headers: {...ghHeaders(), "Content-Type": "application/json"},
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error("GitHub rejected the commit: " + (err.message || res.status));
+  }
+  const out = await res.json();
+  sha = out.content.sha;
+}
+
+/* ---------------- state list / detail ---------------- */
+function renderStateList(){
+  const el = $("statelist");
+  el.innerHTML = "";
+  states.slice().sort((a,b) => a.name.localeCompare(b.name)).forEach(s => {
+    const b = document.createElement("button");
+    b.textContent = s.name;
+    b.className = s.id === activeStateId ? "active" : "";
+    b.addEventListener("click", () => { activeStateId = s.id; renderStateList(); renderStateDetail(); });
+    el.appendChild(b);
+  });
+}
+
+function currentState(){ return states.find(s => s.id === activeStateId) || null; }
+
+function renderStateDetail(){
+  const s = currentState();
+  if (!s) { $("state-card").hidden = true; return; }
+  $("state-card").hidden = false;
+  $("state-heading").textContent = s.name;
+  const list = $("flist");
+  list.innerHTML = "";
+  (s.festivals || []).forEach((f, i) => {
+    const row = document.createElement("div");
+    row.className = "frow";
+    row.innerHTML = `<div><div class="fname">${f.name}</div>
+      <div class="fmeta">${f.month} &middot; ${f.band}</div></div>`;
+    const btns = document.createElement("div");
+    btns.className = "fbtns";
+    const editBtn = document.createElement("button");
+    editBtn.className = "ghost"; editBtn.textContent = "Edit";
+    editBtn.addEventListener("click", () => openFestivalForm(i));
+    btns.appendChild(editBtn);
+    row.appendChild(btns);
+    list.appendChild(row);
+  });
+}
+
+$("btn-add-festival").addEventListener("click", () => openFestivalForm(null));
+$("btn-edit-state").addEventListener("click", () => openStateForm(activeStateId));
+$("btn-add-state").addEventListener("click", () => openStateForm(null));
+
+/* ---------------- state form ---------------- */
+function openStateForm(id){
+  const s = id ? states.find(x => x.id === id) : null;
+  $("state-form-title").textContent = s ? "Edit " + s.name : "New state";
+  $("sf-id").value = s ? s.id : "";
+  $("sf-id").disabled = !!s;
+  $("sf-name").value = s ? s.name : "";
+  $("sf-stnm").value = s ? s.st_nm : "";
+  $("sf-capital").value = s ? s.capital : "";
+  $("sf-languages").value = s ? s.languages : "";
+  $("sf-tagline").value = s ? s.tagline : "";
+  $("btn-delete-state").hidden = !s;
+  $("state-form-view").dataset.editingId = id || "";
+  $("editor-view").hidden = true;
+  $("state-form-view").hidden = false;
+}
+$("btn-cancel-state").addEventListener("click", () => {
+  $("state-form-view").hidden = true; $("editor-view").hidden = false;
+});
+$("btn-save-state").addEventListener("click", async () => {
+  const editingId = $("state-form-view").dataset.editingId;
+  const id = $("sf-id").value.trim();
+  const stnm = $("sf-stnm").value.trim();
+  if (!id || !stnm) { showStatus("err", "Id and map name are required."); return; }
+  if (!STNM_LIST.includes(stnm)) { showStatus("err", "Map name must exactly match one of the official state or union territory names."); return; }
+  const data = {
+    id, name: $("sf-name").value.trim(), st_nm: stnm,
+    capital: $("sf-capital").value.trim(), languages: $("sf-languages").value.trim(),
+    tagline: $("sf-tagline").value.trim()
+  };
+  if (editingId) {
+    const s = states.find(x => x.id === editingId);
+    Object.assign(s, data);
+  } else {
+    if (states.some(x => x.id === id)) { showStatus("err", "That id is already used."); return; }
+    data.festivals = [];
+    states.push(data);
+  }
+  showStatus("busy", "Saving to GitHub...");
+  try {
+    await commit((editingId ? "Update" : "Add") + " state: " + data.name);
+    activeStateId = data.id;
+    $("state-form-view").hidden = true; $("editor-view").hidden = false;
+    renderStateList(); renderStateDetail();
+    showStatus("ok", "Saved.");
+  } catch(e){ showStatus("err", e.message); }
+});
+$("btn-delete-state").addEventListener("click", async () => {
+  const editingId = $("state-form-view").dataset.editingId;
+  const s = states.find(x => x.id === editingId);
+  if (!s) return;
+  if (!confirm("Delete " + s.name + " and all its festivals? This cannot be undone.")) return;
+  states = states.filter(x => x.id !== editingId);
+  showStatus("busy", "Deleting...");
+  try {
+    await commit("Remove state: " + s.name);
+    activeStateId = null;
+    $("state-form-view").hidden = true; $("editor-view").hidden = false;
+    renderStateList(); renderStateDetail();
+    showStatus("ok", "Deleted.");
+  } catch(e){ showStatus("err", e.message); }
+});
+
+/* ---------------- festival form ---------------- */
+function openFestivalForm(index){
+  const s = currentState();
+  const f = index !== null ? s.festivals[index] : null;
+  editingFestivalIndex = index;
+  $("festival-form-title").textContent = f ? "Edit " + f.name : "New festival in " + s.name;
+  $("ff-name").value = f ? f.name : "";
+  $("ff-aliases").value = f ? f.aliases : "";
+  $("ff-month").value = f ? f.month : "";
+  $("ff-season").value = f ? f.season : "";
+  $("ff-scale").value = f ? f.scale : "2";
+  $("ff-band").value = f ? f.band : "community";
+  $("ff-categories").value = f ? (f.categories || []).join(", ") : "";
+  $("ff-reach").value = f ? f.reach : "";
+  $("ff-imageurl").value = f ? (f.imageUrl || "") : "";
+  $("ff-image").value = f ? f.image : "";
+  ["what","who","when","origin","signifies","beliefs","celebrate","local"].forEach(k => {
+    $("ff-" + k).value = f ? (f[k] || "") : "";
+  });
+  updateThumb();
+  $("btn-delete-festival").hidden = index === null;
+  $("editor-view").hidden = true;
+  $("festival-form-view").hidden = false;
+}
+function updateThumb(){
+  const url = $("ff-imageurl").value.trim();
+  const img = $("ff-thumb");
+  if (url) { img.src = url; img.hidden = false; } else { img.hidden = true; }
+}
+$("ff-imageurl").addEventListener("input", updateThumb);
+
+$("btn-cancel-festival").addEventListener("click", () => {
+  $("festival-form-view").hidden = true; $("editor-view").hidden = false;
+});
+$("btn-save-festival").addEventListener("click", async () => {
+  const s = currentState();
+  const name = $("ff-name").value.trim();
+  if (!name) { showStatus("err", "A festival needs a name."); return; }
+  const data = {
+    name,
+    aliases: $("ff-aliases").value.trim(),
+    month: $("ff-month").value.trim(),
+    season: $("ff-season").value.trim(),
+    scale: Number($("ff-scale").value),
+    categories: $("ff-categories").value.split(",").map(x => x.trim()).filter(Boolean),
+    band: $("ff-band").value,
+    reach: $("ff-reach").value.trim(),
+    imageUrl: $("ff-imageurl").value.trim(),
+    image: $("ff-image").value.trim()
+  };
+  ["what","who","when","origin","signifies","beliefs","celebrate","local"].forEach(k => {
+    data[k] = $("ff-" + k).value.trim();
+  });
+  if (!s.festivals) s.festivals = [];
+  if (editingFestivalIndex !== null) s.festivals[editingFestivalIndex] = data;
+  else s.festivals.push(data);
+
+  showStatus("busy", "Saving to GitHub...");
+  try {
+    await commit((editingFestivalIndex !== null ? "Update" : "Add") + " festival: " + name + " (" + s.name + ")");
+    $("festival-form-view").hidden = true; $("editor-view").hidden = false;
+    renderStateDetail();
+    showStatus("ok", "Saved. GitHub Pages will redeploy the site in a minute or two.");
+  } catch(e){ showStatus("err", e.message); }
+});
+$("btn-delete-festival").addEventListener("click", async () => {
+  const s = currentState();
+  const f = s.festivals[editingFestivalIndex];
+  if (!confirm("Delete " + f.name + "?")) return;
+  s.festivals.splice(editingFestivalIndex, 1);
+  showStatus("busy", "Deleting...");
+  try {
+    await commit("Remove festival: " + f.name + " (" + s.name + ")");
+    $("festival-form-view").hidden = true; $("editor-view").hidden = false;
+    renderStateDetail();
+    showStatus("ok", "Deleted.");
+  } catch(e){ showStatus("err", e.message); }
+});
+</script>
+</body>
+</html>

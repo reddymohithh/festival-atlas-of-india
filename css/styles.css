@@ -1,0 +1,182 @@
+  :root{
+    --cream:#F3EDE2; --paper:#FAF6EE; --ink:#1E1A16; --ink-2:#544B41; --ink-3:#8C8175;
+    --rule:rgba(30,26,22,.16);
+    --saffron:#C4531F; --indigo:#2B3A67; --green:#3F6141; --turmeric:#A0791A; --red:#8A2B2B;
+    --serif:"Newsreader",Georgia,serif; --sans:"Archivo","Helvetica Neue",Helvetica,sans-serif;
+    --mono:"IBM Plex Mono",ui-monospace,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;overflow:hidden;background:var(--cream);color:var(--ink);
+    font-family:var(--sans);-webkit-font-smoothing:antialiased}
+  a{color:var(--saffron);text-decoration:none}
+  a:hover{color:var(--red)}
+  #stage{position:fixed;inset:0;overflow:hidden}
+  #grain{position:fixed;inset:0;pointer-events:none;opacity:.5;z-index:60;mix-blend-mode:multiply}
+
+  /* ---------- masthead ---------- */
+  /* rendered as SVG text inside the map group itself (see drawMap), parked in
+     the empty sea/Tibet gap above the northeast states, so it moves, warps
+     and blurs together with the map instead of floating over it */
+  .svgtitle{font-family:var(--serif);font-size:26px;font-weight:600;fill:var(--ink-3);
+    pointer-events:none;user-select:none;-webkit-user-select:none;transition:opacity .6s,filter .6s}
+  .svgtitle-sub{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;
+    fill:var(--ink-3);pointer-events:none;user-select:none;-webkit-user-select:none;
+    transition:opacity .6s,filter .6s}
+  body.state-open .svgtitle, body.state-open .svgtitle-sub{opacity:.5;filter:blur(1.5px)}
+  #atlasWord{pointer-events:auto}
+
+  /* ---------- map ---------- */
+  #map{position:absolute;inset:0;z-index:10}
+  #map svg{width:100%;height:100%;display:block}
+  #mapgroup{transition:transform 1.05s cubic-bezier(.25,.8,.25,1)}
+  #mapparallax{will-change:transform}
+  path.state{stroke:#FBF7F0;stroke-width:.9;fill-opacity:.55;
+    transition:opacity .6s,filter .6s,fill-opacity .3s,stroke .3s,stroke-width .3s}
+  /* live states: readable at rest; the actual hover/selected border is drawn
+     by the #hoverOutline / #selOutline overlays (see below), not by this
+     path's own stroke, since a shared border between two neighbouring paths
+     would otherwise get clipped by whichever one is drawn on top */
+  path.state.live{cursor:pointer;fill-opacity:1;stroke:#FBF7F0;stroke-width:1.2}
+  body.state-open path.state{opacity:.4;filter:blur(2.4px);pointer-events:none}
+  body.state-open path.state.sel{opacity:1;filter:none;fill-opacity:1}
+  /* a single path can be several disjoint pieces (Puducherry's four
+     enclaves, Daman and Diu's coastal pair) and outlining the real geometry
+     is correct: all of a territory's pieces highlight together on purpose */
+  #hoverOutline{fill:none;stroke:var(--ink);stroke-width:0;pointer-events:none;opacity:0;
+    transform-box:fill-box;transform-origin:center;
+    transition:opacity .2s,stroke-width .2s,transform .25s cubic-bezier(.2,.8,.2,1)}
+  #hoverOutline.active{opacity:1;stroke-width:3;filter:drop-shadow(0 12px 16px rgba(30,26,22,.45));
+    transform:translateY(-6px) scale(1.03)}
+  #selOutline{fill:none;stroke:var(--saffron);stroke-width:2.5;pointer-events:none;opacity:0;
+    transition:opacity .3s}
+  body.state-open #selOutline{opacity:1}
+  body.detail-open #selOutline{opacity:.75}
+  .motif{pointer-events:none;transition:opacity .6s}
+  body.state-open .motif{opacity:.25}
+  #sea{pointer-events:none}
+  #mapoutline{fill:none;stroke:rgba(30,26,22,.28);stroke-width:1.1;pointer-events:none;transition:opacity .6s}
+  body.state-open #mapoutline{opacity:.35}
+  .maplabel{font-family:var(--mono);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;
+    fill:var(--ink);pointer-events:none;transition:opacity .5s;paint-order:stroke;
+    stroke:rgba(251,247,240,.85);stroke-width:3px}
+  body.state-open .maplabel{opacity:0}
+  .dot{fill:var(--saffron);stroke:#FBF7F0;stroke-width:1.6;transition:opacity .5s,r .3s}
+  .dotring{fill:none;stroke:var(--saffron);stroke-width:1.1;opacity:.6;transition:opacity .5s}
+  body.state-open .dotring{opacity:0}
+  body.state-open .dot{opacity:0}
+  .hit{fill:transparent;cursor:pointer}
+  body.state-open .hit{pointer-events:none}
+
+  /* ---------- universe ---------- */
+  #universe{position:absolute;inset:0;z-index:25;pointer-events:none;opacity:0;
+    transition:opacity .6s ease .15s}
+  body.state-open #universe{opacity:1}
+  #veil,#ring,#ring2{position:absolute;border-radius:50%;
+    pointer-events:none;transition:opacity .5s}
+  #veil{background:rgba(250,246,238,.46);backdrop-filter:blur(2px);
+    box-shadow:0 0 0 1px rgba(30,26,22,.05) inset;pointer-events:auto}
+  #ring{border:1px solid var(--rule)}
+  #ring2{border:1px dashed rgba(30,26,22,.11)}
+  #core{position:absolute;text-align:center;opacity:0;cursor:pointer;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    pointer-events:none;transition:opacity .6s ease .3s}
+  body.state-open #core{pointer-events:auto;opacity:1}
+  /* the brief (name, capital, languages) and the description are two views
+     of the same disc, never shown together: compact is the closed state,
+     clicking the disc swaps to the description in its place */
+  #core.compact .ctag{display:none}
+  #core:not(.compact) .cbrief{display:none}
+  #core.disc{border-radius:50%;background:radial-gradient(circle,var(--paper) 62%,rgba(250,246,238,0) 100%)}
+  #core .cname{font-family:var(--serif);font-weight:300;font-size:clamp(20px,2.1vw,32px);line-height:1.02;
+    letter-spacing:.005em;margin-bottom:12px;text-transform:uppercase;text-wrap:balance}
+  #core .cmeta{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--ink-2);line-height:2}
+  #core .ctag{font-size:12px;line-height:1.55;color:var(--ink-2);max-width:22ch;margin:0 auto;
+    font-family:var(--sans)}
+
+  .node{position:absolute;border-radius:50%;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;text-align:center;padding:10px;cursor:pointer;pointer-events:auto;
+    background:var(--paper);transition:opacity .35s,
+      scale .35s cubic-bezier(.2,.8,.2,1),box-shadow .35s,background .35s;
+    box-shadow:0 1px 0 rgba(30,26,22,.04)}
+  .node .nname{font-family:var(--serif);font-size:15px;line-height:1.14;letter-spacing:-.005em;
+    overflow-wrap:normal;word-break:normal;hyphens:none;max-width:100%}
+  .node .nmeta{font-family:var(--mono);font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--ink-2);margin-top:6px;max-height:0;opacity:0;overflow:hidden;
+    transition:max-height .35s,opacity .3s}
+  .node:hover{z-index:5;scale:1.12;box-shadow:0 10px 30px rgba(30,26,22,.10)}
+  .node:hover .nmeta{max-height:40px;opacity:1}
+  #universe.hovering .node:not(:hover){opacity:.42;scale:.93}
+
+  /* ---------- controls ---------- */
+  .dback,.dcat span{white-space:nowrap}
+
+  /* ---------- detail ---------- */
+  #detail{position:fixed;top:50%;left:50%;width:min(58vw,760px);max-height:82vh;z-index:50;
+    background:var(--paper);border:1px solid var(--rule);border-radius:20px;
+    overflow-y:auto;overscroll-behavior:contain;
+    transform:translate(-50%,-50%) scale(.92);opacity:0;pointer-events:none;
+    transition:transform .55s cubic-bezier(.22,.85,.2,1),opacity .45s ease;
+    box-shadow:0 30px 80px rgba(30,26,22,.18)}
+  body.detail-open #detail{transform:translate(-50%,-50%) scale(1);opacity:1;pointer-events:auto}
+  body.detail-open path.state.sel{opacity:.75}
+  body.detail-open #universe{opacity:.32;filter:blur(1.5px)}
+  #detail .pad{padding:40px clamp(28px,4vw,56px) 90px}
+  .dtop{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:34px}
+  .dback{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;
+    background:none;border:none;border-bottom:1px solid var(--rule);padding:0 0 4px;cursor:pointer;
+    color:var(--ink)}
+  .dback:hover{border-color:var(--saffron)}
+  .dclose{background:none;border:1px solid var(--rule);border-radius:50%;width:30px;height:30px;
+    cursor:pointer;color:var(--ink-2);font-size:15px;line-height:1;flex:none}
+  .dclose:hover{border-color:var(--saffron);color:var(--saffron)}
+  .dcat{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:16px}
+  .dcat span{font-family:var(--mono);font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;
+    border:1px solid var(--rule);border-radius:999px;padding:4px 9px;color:var(--ink-2)}
+  #detail h2{font-family:var(--serif);font-weight:300;font-size:clamp(38px,5vw,62px);line-height:.98;
+    letter-spacing:-.02em;margin:0 0 10px;text-transform:uppercase}
+  .dsub{font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--ink-2);margin-bottom:6px}
+  .dalias{font-family:var(--serif);font-style:italic;font-size:15px;color:var(--ink-2);margin-bottom:26px}
+  .hero{aspect-ratio:4/3;border:1px solid var(--rule);display:flex;align-items:flex-end;padding:14px;
+    background-image:repeating-linear-gradient(115deg,rgba(30,26,22,.055) 0 1px,transparent 1px 9px);
+    margin-bottom:10px}
+  .hero em{font-family:var(--mono);font-style:normal;font-size:9px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--ink-2);line-height:1.6;max-width:38ch}
+  .hero{overflow:hidden;position:relative}
+  .hero img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .herocap{font-family:var(--mono);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--ink-2);margin-bottom:34px}
+  .reach{font-family:var(--serif);font-size:17.5px;line-height:1.5;color:var(--ink);
+    background:#F0E7D6;border-radius:10px;padding:18px 22px;margin-bottom:34px}
+  .sect{margin-bottom:28px}
+  .sect h3{font-family:var(--mono);font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--saffron);margin:0 0 9px;font-weight:500}
+  .sect p{margin:0;font-size:15px;line-height:1.66;color:var(--ink-2)}
+  .local{background:#F0E7D6;padding:24px 26px;margin:38px 0 0;border-left:2px solid var(--saffron)}
+  .local h3{font-family:var(--mono);font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--ink);margin:0 0 10px;font-weight:500}
+  .local p{margin:0;font-family:var(--serif);font-size:17.5px;line-height:1.5;color:var(--ink)}
+  .dnav{display:flex;justify-content:space-between;gap:12px;margin-top:44px;padding-top:18px;
+    border-top:1px solid var(--rule)}
+  .dnav button{font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;
+    background:none;border:none;cursor:pointer;color:var(--ink-2);text-align:left;max-width:45%}
+  .dnav button:hover{color:var(--saffron)}
+  .dnav button:disabled{opacity:.25;cursor:default}
+
+  /* ---------- mobile ---------- */
+  @media (max-width:820px){
+    /* the empty-sea placement is a desktop-projection trick; narrower crops
+       don't leave the same gap, so the title goes back to a plain corner
+       (sized in drawMap, since it is plain SVG text, not this font-size) */
+    body.state-open .svgtitle, body.state-open .svgtitle-sub{opacity:0}
+    #core .cname{font-size:22px;margin-bottom:9px}
+    #core .cmeta{font-size:8.5px;letter-spacing:.1em;line-height:1.9}
+    .node{padding:6px}
+    .node .nname{font-size:11px;line-height:1.1}
+    .node .nmeta{font-size:7.5px}
+    #detail{width:92vw;max-height:84vh}
+    #detail .pad{padding:26px 22px 70px}
+    #detail h2{font-size:34px}
+    .sect p{font-size:14.5px}
+  }
