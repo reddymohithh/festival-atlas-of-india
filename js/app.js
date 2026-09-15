@@ -159,7 +159,7 @@ function drawMap(){
   const mainland = features.filter(f => !FAR_ISLANDS.includes(f.properties.st_nm));
   const fc = {type:"FeatureCollection", features: mainland};
   const box = mob
-    ? [[w*0.06, h*0.05],[w*0.94, h*0.62]]
+    ? [[w*0.04, h*0.05],[w*0.96, h*0.94]]
     : [[w*0.14, h*0.03],[w*0.86, h*0.99]];
   projection = d3.geoMercator().fitExtent(box, fc);
   pathGen = d3.geoPath(projection);
