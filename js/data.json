@@ -2922,8 +2922,17 @@
         ],
         "band": "community",
         "reach": "This festival is centered in the districts of Jhabua, Alirajpur, Dhar, and Khargone, an area where the Bhil and Bhilala communities live.",
-        "imageUrl": "https://discoverindiabycar.com/wp-content/uploads/2024/06/Bhagoria-Festival-Everything-You-Need-to-Know-03.jpg",
         "image": "Ferris wheel and crowded haat ground at Bhagoria, Jhabua district, afternoon",
+        "media": [
+          {
+            "type": "image",
+            "url": "https://discoverindiabycar.com/wp-content/uploads/2024/06/Bhagoria-Festival-Everything-You-Need-to-Know-03.jpg"
+          },
+          {
+            "type": "youtube",
+            "url": "https://www.youtube.com/watch?v=0WlNDi5MsyE"
+          }
+        ],
         "what": "Bhagoria is a week of haats, which are weekly markets, held in about twenty villages between Jhabua and Alirajpur in the days leading up to Holi. At these crowded markets, people come together to trade goods, play music, and look for romantic partners, all in the same place at the same time.",
         "who": "The Bhil, Bhilala, and Pateliya communities of western Madhya Pradesh celebrate this festival.",
         "when": "It takes place during the week before Holi, in the Hindu month of Phalgun, which usually falls in March.",
