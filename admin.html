@@ -65,8 +65,18 @@
   .frow .fbtns{display:flex;gap:8px;flex:none}
   .frow .fbtns button{padding:6px 12px;font-size:9.5px}
   [hidden]{display:none!important}
-  .thumb{width:100%;max-width:220px;aspect-ratio:4/3;object-fit:cover;border-radius:8px;
-    border:1px solid var(--rule);margin-top:8px;background:#fff}
+  .medialist{display:flex;flex-direction:column;gap:8px;margin-bottom:18px}
+  .mrow{display:flex;align-items:center;gap:12px;padding:8px;border:1px solid var(--rule);
+    border-radius:10px;background:#fff}
+  .mthumb{width:76px;height:48px;object-fit:cover;border-radius:6px;border:1px solid var(--rule);
+    background:var(--cream);flex:none}
+  .minfo{flex:1;min-width:0}
+  .mtype{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--saffron)}
+  .murl{font-size:12px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mbtns{display:flex;gap:6px;flex:none}
+  .mbtns button{padding:5px 10px;font-size:10px}
+  .mempty{font-size:12px;color:var(--ink-3)}
   .sectiontitle{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;
     color:var(--saffron);margin:26px 0 12px}
   .toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px}
@@ -222,17 +232,17 @@
       </div>
       <div class="field"><label>Reach (how widely it is kept)</label><input id="ff-reach"></div>
 
-      <div class="sectiontitle">The photo</div>
-      <div class="row">
-        <div class="field">
-          <label>Image URL (a link to a photo hosted elsewhere, optional)</label>
-          <input id="ff-imageurl" placeholder="https://...">
-          <img id="ff-thumb" class="thumb" hidden>
-        </div>
-        <div class="field">
-          <label>Image caption</label>
-          <input id="ff-image" placeholder="Short scene description, used as a caption or a placeholder">
-        </div>
+      <div class="sectiontitle">Photos and videos</div>
+      <div class="field">
+        <label>Paste links, one per line (image links or YouTube links)</label>
+        <textarea id="ff-medialinks" placeholder="https://example.com/festival-photo.jpg&#10;https://www.youtube.com/watch?v=..."></textarea>
+        <div class="hint">Nothing is uploaded or stored here. These are only links, embedded when the page loads, and they slide every 5 seconds in the order listed below. A YouTube video holds the slideshow still while it is playing.</div>
+        <div style="margin-top:10px"><button class="ghost" id="btn-add-media" type="button">Add these links</button></div>
+      </div>
+      <div class="medialist" id="media-list"></div>
+      <div class="field">
+        <label>Caption (shown under the photos and videos)</label>
+        <input id="ff-image" placeholder="Short scene description, used as a caption or a placeholder">
       </div>
 
       <div class="sectiontitle">The story, written in full plain sentences a 10 year old could follow</div>
@@ -515,22 +525,95 @@ function openFestivalForm(index){
   $("ff-band").value = f ? f.band : "community";
   $("ff-categories").value = f ? (f.categories || []).join(", ") : "";
   $("ff-reach").value = f ? f.reach : "";
-  $("ff-imageurl").value = f ? (f.imageUrl || "") : "";
   $("ff-image").value = f ? f.image : "";
   ["what","who","when","origin","signifies","beliefs","celebrate","local"].forEach(k => {
     $("ff-" + k).value = f ? (f[k] || "") : "";
   });
-  updateThumb();
+  // older entries kept a single imageUrl; carry it over as the first item
+  formMedia = f ? (Array.isArray(f.media) ? f.media.map(m => ({type: m.type, url: m.url}))
+    : (f.imageUrl ? [{type: "image", url: f.imageUrl}] : [])) : [];
+  $("ff-medialinks").value = "";
+  renderMediaList();
   $("btn-delete-festival").hidden = index === null;
   $("editor-view").hidden = true;
   $("festival-form-view").hidden = false;
 }
-function updateThumb(){
-  const url = $("ff-imageurl").value.trim();
-  const img = $("ff-thumb");
-  if (url) { img.src = url; img.hidden = false; } else { img.hidden = true; }
+
+/* ---------------- photos and videos (links only) ---------------- */
+let formMedia = [];
+const YT_RE = /(?:youtu\.be\/|youtube(?:-nocookie)?\.com\/(?:watch\?(?:[^#]*&)?v=|embed\/|shorts\/|live\/|v\/))([A-Za-z0-9_-]{11})/;
+const youtubeId = url => { const m = String(url || "").match(YT_RE); return m ? m[1] : null; };
+
+function parseMediaLink(raw){
+  if (youtubeId(raw)) return {type: "youtube", url: raw};
+  if (/^https?:\/\/\S+$/i.test(raw)) return {type: "image", url: raw};
+  return null;
 }
-$("ff-imageurl").addEventListener("input", updateThumb);
+
+function renderMediaList(){
+  const box = $("media-list");
+  box.innerHTML = "";
+  if (!formMedia.length) {
+    const e = document.createElement("div");
+    e.className = "mempty";
+    e.textContent = "Nothing added yet. This festival will show the photograph placeholder.";
+    box.appendChild(e);
+    return;
+  }
+  formMedia.forEach((m, i) => {
+    const row = document.createElement("div");
+    row.className = "mrow";
+    const th = document.createElement("img");
+    th.className = "mthumb";
+    th.alt = "";
+    const id = youtubeId(m.url);
+    th.src = id ? "https://img.youtube.com/vi/" + id + "/mqdefault.jpg" : m.url;
+    const info = document.createElement("div");
+    info.className = "minfo";
+    const t = document.createElement("div");
+    t.className = "mtype";
+    t.textContent = (i + 1) + ". " + (id ? "YouTube video" : "Image");
+    const u = document.createElement("div");
+    u.className = "murl";
+    u.textContent = m.url;
+    info.append(t, u);
+    const btns = document.createElement("div");
+    btns.className = "mbtns";
+    const mk = (label, fn, disabled) => {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "ghost"; b.textContent = label; b.disabled = !!disabled;
+      b.addEventListener("click", fn);
+      return b;
+    };
+    btns.append(
+      mk("Up", () => { [formMedia[i-1], formMedia[i]] = [formMedia[i], formMedia[i-1]]; renderMediaList(); }, i === 0),
+      mk("Down", () => { [formMedia[i+1], formMedia[i]] = [formMedia[i], formMedia[i+1]]; renderMediaList(); }, i === formMedia.length - 1),
+      mk("Remove", () => { formMedia.splice(i, 1); renderMediaList(); })
+    );
+    row.append(th, info, btns);
+    box.appendChild(row);
+  });
+}
+
+$("btn-add-media").addEventListener("click", () => {
+  const tokens = $("ff-medialinks").value.split(/\s+/).filter(Boolean);
+  if (!tokens.length) { showStatus("err", "Paste at least one link first."); return; }
+  let added = 0, dupes = 0;
+  const skipped = [];
+  tokens.forEach(tok => {
+    const m = parseMediaLink(tok);
+    if (!m) { skipped.push(tok); return; }
+    if (formMedia.some(x => x.url === m.url)) { dupes++; return; }
+    formMedia.push(m); added++;
+  });
+  // keep anything that was not a link in the box so a typo can be fixed
+  $("ff-medialinks").value = skipped.join("\n");
+  renderMediaList();
+  const bits = [added + " added"];
+  if (dupes) bits.push(dupes + " already in the list");
+  if (skipped.length) bits.push("not valid http(s) or YouTube links: " + skipped.slice(0, 3).map(t => '"' + (t.length > 30 ? t.slice(0, 30) + "..." : t) + '"').join(", ") + (skipped.length > 3 ? " and more" : ""));
+  showStatus(skipped.length && !added ? "err" : "ok", bits.join(", ") + ".");
+});
 
 $("btn-cancel-festival").addEventListener("click", () => {
   $("festival-form-view").hidden = true; $("editor-view").hidden = false;
@@ -548,9 +631,12 @@ $("btn-save-festival").addEventListener("click", async () => {
     categories: $("ff-categories").value.split(",").map(x => x.trim()).filter(Boolean),
     band: $("ff-band").value,
     reach: $("ff-reach").value.trim(),
-    imageUrl: $("ff-imageurl").value.trim(),
     image: $("ff-image").value.trim()
   };
+  // links typed but never added with the button still count
+  const pending = $("ff-medialinks").value.split(/\s+/).filter(Boolean).map(parseMediaLink).filter(Boolean);
+  pending.forEach(m => { if (!formMedia.some(x => x.url === m.url)) formMedia.push(m); });
+  if (formMedia.length) data.media = formMedia.map(m => ({type: youtubeId(m.url) ? "youtube" : "image", url: m.url}));
   ["what","who","when","origin","signifies","beliefs","celebrate","local"].forEach(k => {
     data[k] = $("ff-" + k).value.trim();
   });

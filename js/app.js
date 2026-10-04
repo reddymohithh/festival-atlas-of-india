@@ -95,7 +95,7 @@ const stageSize = () => ({w: window.innerWidth, h: window.innerHeight});
 let topology = null;
 Promise.all([
   d3.json("https://cdn.jsdelivr.net/gh/udit-001/india-maps-data@main/topojson/india.json"),
-  fetch("js/data.json").then(r => r.json())
+  fetch("js/data.json", {cache: "no-cache"}).then(r => r.json())
 ])
   .then(([topo, states]) => {
     topology = topo;
@@ -556,7 +556,132 @@ const SECTIONS = [
   ["beliefs","What do people believe?"],["celebrate","How is it celebrated?"]
 ];
 
+/* ---- media: images and YouTube videos, links only, embedded not stored ---- */
+const YT_RE = /(?:youtu\.be\/|youtube(?:-nocookie)?\.com\/(?:watch\?(?:[^#]*&)?v=|embed\/|shorts\/|live\/|v\/))([A-Za-z0-9_-]{11})/;
+const youtubeId = url => { const m = String(url || "").match(YT_RE); return m ? m[1] : null; };
+
+// a festival's media list, tolerating the older single `imageUrl` field, with
+// anything that is neither a YouTube link nor a plain http(s) link dropped
+function festivalMedia(f){
+  const raw = Array.isArray(f.media) ? f.media.slice() : [];
+  if (!raw.length && f.imageUrl) raw.push({url: f.imageUrl});
+  return raw.map(m => {
+    const id = youtubeId(m && m.url);
+    if (id) return {type:"youtube", id};
+    return m && /^https?:\/\//i.test(m.url || "") ? {type:"image", url:m.url} : null;
+  }).filter(Boolean);
+}
+
+const ytSrc = id => "https://www.youtube.com/embed/" + id + "?rel=0&playsinline=1&enablejsapi=1"
+  + (/^https?:$/.test(location.protocol) ? "&origin=" + encodeURIComponent(location.origin) : "");
+
+function mediaHTML(items, f){
+  if (!items.length) return `<div class="hero"><em>Photograph to place here: ${f.image}</em></div>`;
+  const slides = items.map((m,k) => m.type === "youtube"
+    ? `<div class="slide vid"><iframe data-yt="${m.id}" title="${escAttr(f.name)} video"
+         allow="accelerometer; encrypted-media; picture-in-picture; fullscreen"
+         referrerpolicy="strict-origin-when-cross-origin"></iframe></div>`
+    : `<div class="slide"><img src="${escAttr(m.url)}" alt="${escAttr(f.name)}"${k ? ' loading="lazy"' : ""}></div>`).join("");
+  const nav = items.length > 1
+    ? `<button class="cbtn cprev" aria-label="Previous">‹</button><button class="cbtn cnext" aria-label="Next">›</button>` : "";
+  const dots = items.length > 1
+    ? `<div class="cdots">${items.map((_,k) => `<button aria-label="Show item ${k+1}"></button>`).join("")}</div>` : "";
+  return `<div class="media"><div class="hero carousel"><div class="slides">${slides}</div>${nav}</div>${dots}
+    ${f.image ? `<div class="herocap">${f.image}</div>` : ""}</div>`;
+}
+
+// YouTube's own player API, loaded only when a festival actually has a video,
+// so the carousel can tell when a video is playing and hold still for it
+let ytApi = null;
+function loadYT(){
+  if (ytApi) return ytApi;
+  ytApi = new Promise(res => {
+    if (window.YT && YT.Player) return res(window.YT);
+    const prev = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = () => { if (prev) prev(); res(window.YT); };
+    const s = document.createElement("script");
+    s.src = "https://www.youtube.com/iframe_api"; s.async = true;
+    s.onerror = () => res(null);
+    document.head.appendChild(s);
+  });
+  return ytApi;
+}
+
+let carouselTimer = null, carouselCleanup = null;
+function stopCarousel(){
+  clearTimeout(carouselTimer); carouselTimer = null;
+  if (carouselCleanup){ carouselCleanup(); carouselCleanup = null; }
+}
+
+// slides every 5 seconds; holds still while the pointer is over it or a video
+// is playing, and any manual move (arrows, dots) restarts the 5 second count
+function startCarousel(){
+  stopCarousel();
+  const root = detail.querySelector(".media");
+  if (!root) return;
+  const track = root.querySelector(".slides");
+  const slides = [...root.querySelectorAll(".slide")];
+  const dots = [...root.querySelectorAll(".cdots button")];
+  const frames = slides.map(s => s.querySelector("iframe"));
+  const n = slides.length;
+  const players = new Map();
+  const holds = new Set();
+  let idx = 0, stopped = false;
+
+  const schedule = () => {
+    clearTimeout(carouselTimer); carouselTimer = null;
+    if (n < 2 || holds.size || stopped) return;
+    carouselTimer = setTimeout(() => show(idx + 1), 5000);
+  };
+
+  const loadFrame = k => {
+    const fr = frames[k];
+    if (!fr || fr.getAttribute("src")) return;
+    fr.src = ytSrc(fr.dataset.yt);
+    loadYT().then(YT => {
+      if (!YT || stopped || players.has(k)) return;
+      try {
+        players.set(k, new YT.Player(fr, {events:{onStateChange: e => {
+          if (k !== idx) return;
+          if (e.data === 1 || e.data === 3){ holds.add("play"); clearTimeout(carouselTimer); carouselTimer = null; }
+          else { holds.delete("play"); schedule(); }
+        }}}));
+      } catch(_){}
+    });
+  };
+
+  // pause a video that is being left, or unload it if the player never came up
+  const quiet = k => {
+    const fr = frames[k]; if (!fr || !fr.getAttribute("src")) return;
+    const p = players.get(k);
+    if (p && typeof p.pauseVideo === "function") { try { p.pauseVideo(); } catch(_){} }
+    else fr.removeAttribute("src");
+  };
+
+  function show(k){
+    const next = (k + n) % n;
+    if (next !== idx) quiet(idx);
+    idx = next;
+    holds.delete("play");
+    track.style.transform = "translateX(" + (-idx * 100) + "%)";
+    dots.forEach((d,j) => d.classList.toggle("on", j === idx));
+    loadFrame(idx);
+    schedule();
+  }
+
+  root.addEventListener("pointerenter", e => { if (e.pointerType === "mouse"){ holds.add("hover"); clearTimeout(carouselTimer); carouselTimer = null; } });
+  root.addEventListener("pointerleave", e => { if (e.pointerType === "mouse"){ holds.delete("hover"); schedule(); } });
+  const prev = root.querySelector(".cprev"), nxt = root.querySelector(".cnext");
+  if (prev) prev.onclick = () => show(idx - 1);
+  if (nxt) nxt.onclick = () => show(idx + 1);
+  dots.forEach((d,j) => d.onclick = () => show(j));
+
+  carouselCleanup = () => { stopped = true; frames.forEach((_,k) => quiet(k)); };
+  show(0);
+}
+
 function openDetail(i){
+  stopCarousel();
   current = i;
   const f = selected.festivals[i], fs = selected.festivals;
   document.getElementById("detail-body").innerHTML = `
@@ -569,10 +694,7 @@ function openDetail(i){
     <h2>${f.name}</h2>
     <div class="dsub">${selected.name} · ${f.month}</div>
     <div class="dalias">Also known as ${f.aliases}</div>
-    <div class="hero">${f.imageUrl
-      ? `<img src="${escAttr(f.imageUrl)}" alt="${escAttr(f.name)}" loading="lazy">`
-      : `<em>Photograph to place here: ${f.image}</em>`}</div>
-    ${f.imageUrl ? `<div class="herocap">${f.image}</div>` : ""}
+    ${mediaHTML(festivalMedia(f), f)}
     <div class="reach">${f.reach.replace(/\.+$/, "")}.</div>
     ${SECTIONS.map(([k,t]) => `<div class="sect"><h3>${t}</h3><p>${f[k]}</p></div>`).join("")}
     <div class="local"><h3>A local detail</h3><p>${f.local}</p></div>
@@ -588,8 +710,10 @@ function openDetail(i){
   const p = document.getElementById("dprev"), nx = document.getElementById("dnext");
   if (!p.disabled) p.onclick = () => openDetail(i-1);
   if (!nx.disabled) nx.onclick = () => openDetail(i+1);
+  startCarousel();
 }
 function closeDetail(){
+  stopCarousel();
   document.body.classList.remove("detail-open");
   detail.setAttribute("aria-hidden","true");
   current = null;
